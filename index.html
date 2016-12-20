@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  
+  <script>
+    // helper method for oscillator
+    function freqfromclasslist(list)
+    {
+      switch(list[0])
+      {
+        // tone's frequency in Hertz
+        case 'c': return 262;
+        case 'd': return 294
+        case 'e': return 330;
+        case 'f': return 349;
+        case 'g': return 392;
+        case 'a': return 440;
+        case 'h': return 494;
+        case 'C': return 523;
+        case 'D': return 587;
+        case 'E': return 659;
+        case 'F': return 698;
+        case 'p': return 0;
+        default: return 440;
+      }
+    }
+    
+    // called every 100ms to highlight the notes that are under the conductor line
+    function highlight()
+    {
+      // loop through all divs
+      var divs = document.getElementsByTagName('div');
+      var x = document.getElementById('conductor').getBoundingClientRect().x;
+      for(var i=0; i<divs.length; i++)
+      {
+        // when under the conductor line (e.g. left and right on different sides of it)
+        l = divs[i].getBoundingClientRect().x;
+        r = divs[i].getBoundingClientRect().right;
+        if(l<x && r>x)
+        {
+          // play tone
+          oscillator.frequency.value = freqfromclasslist(divs[i].classList);
+          // add CSS highlight class
+          divs[i].classList.add('highlight');
+        }
+        else
+        {
+          // otherwise remove highlight class (just to be sure)
+          divs[i].classList.remove('highlight');
+        }
+      }
+    }
+    
+    // add notes HTML dynamically (syntax see readme)
+    function addScore(raw)
+    {
+      // allow two voices
+      var html = "<ol id='notes" + (document.getElementById('notes')==null ? '' : '2') + "'>\n<li>\n";
+      var tobeclosed = false;
+      
+      // parse char by char
+      for(var i=0; i<raw.length; i++)
+      {
+        switch(raw[i])
+        {
+          // notes
+          case 'A':
+          case 'H':
+          case 'c':
+          case 'd':
+          case 'e':
+          case 'f':
+          case 'g':
+          case 'a':
+          case 'h':
+          case 'C':
+          case 'D':
+          case 'E':
+          case 'F':
+          case 'G':
+          case 'p':  // pause
+          case '-':  // different notation for pause
+            if(tobeclosed) html += "'></div>\n";
+            html += "<div class='" + (raw[i]=='-' ? 'p' : raw[i]) + ' d';
+            tobeclosed = false;
+            break;
+          // durations
+          case '1':
+          case '2':
+          case '3':
+          case '4':
+          case '6':
+          case '8':
+            html += raw[i]
+            tobeclosed = true;
+            break;
+          // dotted notes
+          case '.':
+            html += 'd';  // add a "d" for "dotted" to the duration
+            tobeclosed = true;
+            break;
+          // bars - program doesn't really care but this breaks the whole code into li's for sake of orientation
+          case '|':
+            if(tobeclosed) html += "'></div>\n";
+            html += "</li>\n<li>\n";
+            tobeclosed = false;
+            break;
+        }
+      }
+      
+      // finish it up
+      if(tobeclosed) html += "'></div>\n";      
+      html += "</li></ol>";
+      
+      // add and return via all ways possible ^^
+      document.getElementsByTagName('body')[0].innerHTML += html;
+      console.log(html);      
+      return html;
+    }
+  </script>
+  
+  <title>Robot Conductor</title>
+  
+  <style> 
+    /* colour and offset notes */
+    .A { background-color:hotpink;     margin-top:240px; }   /* low A */
+    .H { background-color:orange;      margin-top:220px; }
+    .c { background-color:black;       margin-top:200px; color:white; }
+    .d { background-color:silver;      margin-top:180px; }
+    .e { background-color:blueviolet;  margin-top:160px; color:white; }
+    .f { background-color:royalblue;   margin-top:140px; color:white; }
+    .g { background-color:turquoise;   margin-top:120px; }
+    .a { background-color:limegreen;   margin-top:100px; }
+    .h { background-color:greenyellow; margin-top: 80px; }   /* known as b in English, Germans call it "h" (and b-flat is "b"... #confusion) */
+    .C { background-color:hotpink;     margin-top: 60px; }
+    .D { background-color:red;         margin-top: 40px; color:white; }
+    .E { background-color:orange;      margin-top: 20px; }
+    .F { background-color:yellow;      margin-top: 0px;  }
+    .G { background-color:royalblue;   margin-top:-20px; color:white; }   /* high G */
+    .p { background-color:white;       margin-top: 0px;  }   /* pause */
+    
+    /* labels */
+    .A:before { content:"A"; }
+    .H:before { content:"H"; }
+    .c:before { content:"c"; }
+    .d:before { content:"d"; }
+    .e:before { content:"e"; }
+    .f:before { content:"f"; }
+    .g:before { content:"g"; }
+    .a:before { content:"a"; }
+    .h:before { content:"h"; }
+    .C:before { content:"C"; }
+    .D:before { content:"D"; }
+    .E:before { content:"E"; }
+    .F:before { content:"F"; }
+    .G:before { content:"G"; }
+    .p:before { content:"";  }  /* no label for pause */
+    
+    /* the d stands for durations */
+    .d16  { width: 10px; }
+    .d3   { width: 13px; }  /* syncope */
+    .d8   { width: 20px; }
+    .d8d  { width: 30px; }
+    .d4   { width: 40px; }
+    .d4d  { width: 60px; }
+    .d2   { width: 80px; }
+    .d2d  { width:120px; }
+    .d1   { width:160px; }
+                       
+    /* every voice is an ol */
+    ol {
+      left:400px;
+      width:4000px;
+      position:absolute;
+    }
+    
+    /* every ol can be organised into li's - e.g. to denote the bars (the program doesn't care about it though) */
+    li {
+      float:left;      
+      list-style:none;
+    }
+    
+    /* every note is a div */
+    div {
+      float:left;
+      padding:1px 3px;
+      font-family:Arial;
+      margin-right:2px;
+      opacity:0.7;
+    }
+    
+    /* style to highlight the divs when under the conductor */
+    .highlight {
+      opacity:1;
+      transition:opacity 0.4s;
+      /*box-shadow: 0px 0px 5px 2px rgba(0,0,0,0.75);*/
+    }
+    
+    /* that vertical line which tells you when to play your tone */
+    #conductor {
+      border-left:1px solid black;
+      position:fixed;
+      left: 200px;
+      top: 0px;
+      height:100vw;
+      z-index:10;
+    }
+    
+    /* make sheet move - adjust transition speed so that it matches the pace of your song (no UI for that yet, sorry) */
+    .active {
+      left:-4200px;
+      transition: left 70s linear;
+    }
+  </style>
+</head>
+<body>
+  <!-- add scores -->
+  <input id="input"><button onclick="addScore(document.getElementById('input').value)">Add</button>
+  
+  <!-- start -->
+  <button onclick="this.innerHTML=(this.innerHTML=='Stop'?'Start':'Stop'); document.getElementById('notes').classList.toggle('active'); document.getElementById('notes2').classList.toggle('active');">Start</button>
+  
+  <!-- that vertical line which tells you when to play your tone -->
+  <span id="conductor"></span>
+  
+  <!-- notes go here (created dynamically with Add button) -->
+  
+  <script>
+    // initiate highlighting of the notes under the conductor line
+    setInterval(highlight,100);
+    
+    // play the melody with an oscillator
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();    
+    var oscillator = audioCtx.createOscillator();
+    oscillator.type = 'square';
+    oscillator.connect(audioCtx.destination);
+    // uncommented this because it's annoying when it starts automatically... (didn't care about making an UI for it yet)
+    // oscillator.start();
+  </script>
+</body>
+</html>
